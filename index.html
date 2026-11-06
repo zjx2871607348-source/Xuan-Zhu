@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我们的宇宙中心</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --accent-purple: #7A1C79;
+            --accent-glow: rgba(122, 28, 121, 0.6);
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #050510; /* 深邃宇宙黑 */
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, .font-title {
+            font-family: 'Cinzel', serif;
+        }
+
+        /* 动态星空 Canvas 容器 */
+        #starfield {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: radial-gradient(circle at center, #0f0c29 0%, #302b63 50%, #24243e 100%);
+        }
+
+        /* 玻璃拟态卡片效果 */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .glass-card:hover {
+            border-color: rgba(122, 28, 121, 0.5);
+            box-shadow: 0 0 20px var(--accent-glow);
+            transition: all 0.3s ease;
+        }
+
+        /* 强调色文字渐变 */
+        .text-gradient {
+            background: linear-gradient(135deg, #fff 0%, var(--accent-purple) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+      /* 瀑布流布局 */
+        .masonry {
+            column-count: 1;
+            column-gap: 1.5rem;
+        }
+        @media (min-width: 640px) { .masonry { column-count: 2; } }
+        @media (min-width: 1024px) { .masonry { column-count: 3; } }
+        
+        .masonry-item {
+            break-inside: avoid;
+            margin-bottom: 1.5rem;
+            position: relative;
+            border-radius: 0.75rem;
+            /* ⚠️ 这里的 overflow: hidden 已经被彻底删除，释放 3D 空间 */
+        }
+        
+        .masonry-item img {
+            width: 100%;
+            display: block;
+            transition: transform 0.5s ease;
+        }
+        
+        .masonry-item:hover img {
+            transform: scale(1.05);
+        }
+
+        /* 按钮发光效果 */
+        .btn-glow {
+            background-color: var(--accent-purple);
+            box-shadow: 0 0 15px var(--accent-glow);
+            transition: all 0.3s ease;
+        }
+        .btn-glow:hover {
+            box-shadow: 0 0 25px var(--accent-purple);
+            transform: translateY(-2px);
+        }
+
+        /* 3D 翻转卡片核心逻辑 */
+        .flip-container {
+            perspective: 1000px;
+            margin-bottom: 1.5rem;
+            break-inside: avoid;
+        }
+        .flip-card {
+            position: relative;
+            width: 100%;
+            transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-style: preserve-3d;
+            border-radius: 0.75rem;
+        }
+        .flip-container:hover .flip-card {
+            transform: rotateY(180deg);
+        }
+        .flip-front, .flip-back {
+            width: 100%;
+            -webkit-backface-visibility: hidden !important;
+            backface-visibility: hidden !important;
+            border-radius: 0.75rem;
+            /* 将圆角切割移到这里，既保证美观又不破坏 3D */
+            overflow: hidden; 
+        }
+        .flip-front {
+            display: block; 
+            -webkit-transform: translateZ(1px);
+            transform: translateZ(1px);
+        }
+        .flip-back {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(122,28,121,0.9) 0%, rgba(5,5,16,0.95) 100%);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            text-align: center;
+            border: 1px solid rgba(122,28,121,0.4);
+            box-shadow: 0 0 20px rgba(122,28,121,0.3) inset;
+            -webkit-transform: rotateY(180deg) translateZ(2px);
+            transform: rotateY(180deg) translateZ(2px);
+        }
+	/* --- 专属宇宙核心样式 --- */
+        #universe-container {
+            width: 100%;
+            height: 600px; /* 调整宇宙区域高度 */
+            perspective: 1200px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .solar-system {
+            position: relative;
+            width: 400px;
+            height: 400px;
+            transform-style: preserve-3d;
+            /* 倾斜整个星系，制造 3D 视角 */
+            transform: rotateX(75deg); 
+            transition: transform 0.5s ease;
+        }
+
+        /* 中心恒星 (她) */
+        .sun {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 80px;
+            height: 80px;
+            margin-top: -40px;
+            margin-left: -40px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #fff, #f9d423, #ff4e50);
+            box-shadow: 0 0 50px #ff4e50, 0 0 100px #f9d423;
+            /* 太阳不随轨道旋转，所以反向抵消 X 轴倾斜，使其始终正对屏幕 */
+            transform: rotateX(-75deg);
+            z-index: 100;
+        }
+
+        .sun-label {
+            position: absolute;
+            top: 110%;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-family: 'Cinzel', serif;
+            font-size: 1.2rem;
+            text-shadow: 0 0 10px rgba(255,255,255,0.8);
+            white-space: nowrap;
+        }
+
+        /* 轨道 */
+        .orbit {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            border: 1px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            transform-style: preserve-3d;
+        }
+
+        /* 轨道旋转动画 */
+        @keyframes spin {
+            0% { transform: rotateZ(0); }
+            100% { transform: rotateZ(360deg); }
+        }
+
+        /* 行星通用样式 */
+        .planet {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            border-radius: 50%;
+            transform-style: preserve-3d;
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .planet:hover {
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+            transform: scale(1.2);
+        }
+
+        .planet-label {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,255,255,0.8);
+            font-size: 0.8rem;
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .planet:hover .planet-label {
+            opacity: 1;
+        }
+
+        /* 抵消整个星系的 X 轴倾斜和自身的 Z 轴旋转，确保行星始终正对屏幕 */
+        .planet-inner {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+        }
+	/* --- 专属悬浮舱 (Modal) 样式 --- */
+        #modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(5, 5, 16, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            z-index: 9999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.4s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1.5rem;
+        }
+        
+        /* 激活状态 */
+        #modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        /* 悬浮舱本体 */
+        #modal-content {
+            width: 100%;
+            max-width: 480px;
+            /* 初始状态：往下沉一点，稍微缩小 */
+            transform: translateY(40px) scale(0.95); 
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+            position: relative;
+            border-top: 1px solid rgba(122,28,121,0.5); /* 顶部紫色高光 */
+        }
+        
+        /* 悬浮舱弹出动画 */
+        #modal-overlay.active #modal-content {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 1.2rem;
+            right: 1.5rem;
+            font-size: 1.5rem;
+            color: rgba(255,255,255,0.4);
+            cursor: pointer;
+            transition: color 0.3s ease, transform 0.3s ease;
+        }
+        .close-btn:hover {
+            color: var(--accent-purple);
+            transform: rotate(90deg);
+        }
+
+        /* --- 移动端 3D 宇宙自适应 --- */
+        @media (max-width: 768px) {
+            .solar-system {
+                /* 在手机上缩小星系比例，防止撑爆屏幕 */
+                transform: scale(0.6) rotateX(75deg); 
+            }
+            #universe-container {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- 动态星空背景 -->
+    <canvas id="starfield"></canvas>
+
+    <!-- 导航栏 (极简) -->
+    <nav class="fixed w-full z-50 glass-card border-b-0 py-4 px-6 md:px-12 flex justify-between items-center rounded-none">
+        <div class="text-xl font-title tracking-widest text-white">Xuan & Zhu</div>
+        <div class="hidden md:flex space-x-6 text-sm tracking-wide">
+            <a href="#countdown" class="hover:text-[#7A1C79] transition-colors">时间刻度</a>
+            <a href="#gallery" class="hover:text-[#7A1C79] transition-colors">记忆星云</a>
+            <a href="#universe" class="hover:text-[#7A1C79] transition-colors">专属宇宙</a>
+        </div>
+    </nav>
+
+    <!-- Hero 区：倒计时 -->
+    <section id="countdown" class="min-h-screen flex flex-col justify-center items-center px-4 relative pt-20">
+        <div class="text-center z-10 glass-card p-8 md:p-16 rounded-3xl max-w-4xl w-full">
+            <p class="text-sm md:text-base tracking-[0.3em] uppercase mb-4 text-gray-400">Welcome to the center of my universe</p>
+            <h1 class="text-4xl md:text-6xl lg:text-7xl font-title mb-8 leading-tight">
+                我们相爱的 <br>
+                <span class="text-gradient">第 N 个光年</span>
+            </h1>
+            
+            <!-- 计时器 -->
+            <div class="flex justify-center gap-4 md:gap-8 text-center mt-8">
+                <div class="flex flex-col">
+                    <span id="days" class="text-3xl md:text-5xl font-light font-title">00</span>
+                    <span class="text-xs md:text-sm text-gray-400 mt-2 tracking-widest uppercase">Days</span>
+                </div>
+                <div class="text-3xl md:text-5xl font-light text-[#7A1C79]">:</div>
+                <div class="flex flex-col">
+                    <span id="hours" class="text-3xl md:text-5xl font-light font-title">00</span>
+                    <span class="text-xs md:text-sm text-gray-400 mt-2 tracking-widest uppercase">Hours</span>
+                </div>
+                <div class="text-3xl md:text-5xl font-light text-[#7A1C79]">:</div>
+                <div class="flex flex-col">
+                    <span id="minutes" class="text-3xl md:text-5xl font-light font-title">00</span>
+                    <span class="text-xs md:text-sm text-gray-400 mt-2 tracking-widest uppercase">Mins</span>
+                </div>
+                <div class="text-3xl md:text-5xl font-light text-[#7A1C79]">:</div>
+                <div class="flex flex-col">
+                    <span id="seconds" class="text-3xl md:text-5xl font-light font-title">00</span>
+                    <span class="text-xs md:text-sm text-gray-400 mt-2 tracking-widest uppercase">Secs</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 向下滚动提示 -->
+        <a href="#gallery" class="absolute bottom-10 animate-bounce text-gray-500 hover:text-white transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+        </a>
+    </section>
+
+    <!-- 照片墙区 -->
+    <section id="gallery" class="py-24 px-6 md:px-12 max-w-7xl mx-auto">
+        <div class="text-center mb-16">
+            <h2 class="text-3xl md:text-4xl font-title mb-4">记忆星云</h2>
+            <p class="text-gray-400 tracking-wide">每一张照片，都是宇宙中闪烁的星光</p>
+        </div>
+        
+       <!-- 瀑布流容器 -->
+        <div class="masonry">
+            
+            <!-- 照片 1 -->
+            <div class="flip-container">
+                <div class="flip-card masonry-item">
+                    <div class="flip-front">
+                        <img src="images/1.png" alt="我们的合照">
+                        <div class="p-4 absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/80 to-transparent">
+                            <p class="font-title text-sm tracking-widest">LOVE</p>
+                        </div>
+                    </div>
+                    <div class="flip-back">
+                        <h3 class="font-title text-xl mb-3">始於心動 止於永久</h3>
+                        <p class="text-sm text-gray-200 leading-relaxed">我爱你，今天比昨天多一点</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 照片 2 -->
+            <div class="flip-container">
+                <div class="flip-card masonry-item">
+                    <div class="flip-front ">
+                        <img src="images/2.jpg" alt="小馋猫">
+                        <div class="p-4 absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/80 to-transparent">
+                            <p class="font-title text-sm tracking-widest">热气腾腾</p>
+                        </div>
+                    </div>
+                    <div class="flip-back">
+                        <h3 class="font-title text-xl mb-3">吃货日记</h3>
+                        <p class="text-sm text-gray-200 leading-relaxed">看着你满足地吃着喜欢的美食，是我最开心的时刻</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 照片 3 -->
+            <div class="flip-container">
+                <div class="flip-card masonry-item">
+                    <div class="flip-front">
+                        <img src="images/3.jpg" alt="小可爱">
+                        <div class="p-4 absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/80 to-transparent">
+                            <p class="font-title text-sm tracking-widest">开心的宝宝</p>
+                        </div>
+                    </div>
+                    <div class="flip-back">
+                        <h3 class="font-title text-xl mb-3">心动瞬间</h3>
+                        <p class="text-sm text-gray-200 leading-relaxed">你的笑容比这片星空还要闪耀</p>
+                    </div>
+                </div>
+            </div>
+
+             <!-- 照片 4 -->
+             <div class="flip-container">
+                <div class="flip-card masonry-item">
+                    <div class="flip-front">
+                        <img src="images/4.jpg" alt="可爱小猪">
+                        <div class="p-4 absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/80 to-transparent">
+                            <p class="font-title text-sm tracking-widest">你的笑颜</p>
+                        </div>
+                    </div>
+                    <div class="flip-back">
+                        <h3 class="font-title text-xl mb-3">温柔时刻</h3>
+                        <p class="text-sm text-gray-200 leading-relaxed">不管过去多久，我都记得这一天的微风和你</p>
+                    </div>
+                </div>
+            </div>
+
+             <!-- 照片 5 -->
+             <div class="flip-container">
+                <div class="flip-card masonry-item">
+                    <div class="flip-front">
+                        <img src="images/8.jpg" alt="乖乖小猫咪">
+                        <div class="p-4 absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/80 to-transparent">
+                            <p class="font-title text-sm tracking-widest">日常的碎片</p>
+                        </div>
+                    </div>
+                    <div class="flip-back">
+                        <h3 class="font-title text-xl mb-3">专属偏爱</h3>
+                        <p class="text-sm text-gray-200 leading-relaxed">在我的宇宙里，你永远可以做无忧无虑的小朋友</p>
+                    </div>
+                </div>
+            </div>
+
+             <!-- 照片 6 -->
+             <div class="flip-container">
+                <div class="flip-card masonry-item">
+                    <div class="flip-front">
+                        <img src="images/5.jpg" alt="日常碎片1">
+                        <div class="p-4 absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/80 to-transparent">
+                            <p class="font-title text-sm tracking-widest">日常碎片</p>
+                        </div>
+                    </div>
+                    <div class="flip-back">
+                        <h3 class="font-title text-xl mb-3">平淡的幸福</h3>
+                        <p class="text-sm text-gray-200 leading-relaxed">只要和你在一起，再普通的日常也闪闪发光</p>
+                    </div>
+                </div>
+            </div>
+
+             <!-- 照片 7 -->
+             <div class="flip-container">
+                <div class="flip-card masonry-item">
+                    <div class="flip-front">
+                        <img src="images/6.jpg" alt="日常碎片2">
+                        <div class="p-4 absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/80 to-transparent">
+                            <p class="font-title text-sm tracking-widest">日常碎片</p>
+                        </div>
+                    </div>
+                    <div class="flip-back">
+                        <h3 class="font-title text-xl mb-3">牵手相伴</h3>
+                        <p class="text-sm text-gray-200 leading-relaxed">未来的路还很长，我想一直这样牵着你走</p>
+                    </div>
+                </div>
+            </div>
+
+             <!-- 照片 8 -->
+             <div class="flip-container">
+                <div class="flip-card masonry-item">
+                    <div class="flip-front">
+                        <img src="images/7.jpg" alt="日常碎片3">
+                        <div class="p-4 absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/80 to-transparent">
+                            <p class="font-title text-sm tracking-widest">日常碎片</p>
+                        </div>
+                    </div>
+                    <div class="flip-back">
+                        <h3 class="font-title text-xl mb-3">未完待续</h3>
+                        <p class="text-sm text-gray-200 leading-relaxed">我们的故事，每一天都在更新</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- 互动/3D 宇宙占位区 (全新星系结构) -->
+    <section id="universe" class="py-24 px-6 md:px-12 max-w-7xl mx-auto text-center relative overflow-hidden">
+        <h2 class="text-3xl md:text-5xl font-title mb-6 relative z-10">探索我们的宇宙</h2>
+        <p class="text-gray-300 mb-10 max-w-xl mx-auto leading-relaxed relative z-10">
+            你是我宇宙的中心。点击周围的星球，发现那些藏在星空里的秘密。
+        </p>
+
+        <!-- 3D 星系容器 -->
+        <div id="universe-container">
+            <div class="solar-system" id="solar-system">
+                <!-- 中心恒星 (女友) -->
+                <div class="sun">
+                    <div class="sun-label">My Universe</div>
+                </div>
+
+                <!-- 轨道 1 (旅行) -->
+                <div class="orbit" style="width: 200px; height: 200px; margin-top: -100px; margin-left: -100px; animation: spin 20s linear infinite;">
+                    <div class="planet" style="width: 30px; height: 30px; margin-left: -15px; margin-top: -15px;" onclick="openModal('travel')">
+                        <!-- ⚠️ 修复点：将文字 span 放进 planet-inner 里，让 JS 一起修正它的视角 -->
+                        <div class="planet-inner travel-planet" style="background: linear-gradient(135deg, #11998e, #38ef7d); position: relative;">
+                            <span class="planet-label">足迹</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 轨道 2 (美食) -->
+                <div class="orbit" style="width: 300px; height: 300px; margin-top: -150px; margin-left: -150px; animation: spin 35s linear infinite reverse;">
+                    <div class="planet" style="width: 40px; height: 40px; margin-left: -20px; margin-top: -20px;" onclick="openModal('food')">
+                        <div class="planet-inner food-planet" style="background: linear-gradient(135deg, #f12711, #f5af19); position: relative;">
+                            <span class="planet-label">寻味</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 轨道 3 (未来) -->
+                <div class="orbit" style="width: 450px; height: 450px; margin-top: -225px; margin-left: -225px; animation: spin 50s linear infinite;">
+                    <div class="planet" style="width: 35px; height: 35px; margin-left: -17.5px; margin-top: -17.5px;" onclick="openModal('future')">
+                        <!-- 加入你喜欢的专属紫色 -->
+                        <div class="planet-inner future-planet" style="background: linear-gradient(135deg, #7A1C79, #c471ed); position: relative;">
+                            <span class="planet-label">未来</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="py-8 text-center text-sm text-gray-500 border-t border-white/5 relative z-10">
+        <p>Designed with love for my only universe.</p>
+        <p class="mt-2 font-title">∞ Forever & Always ∞</p>
+    </footer>
+	!-- 专属悬浮舱 (默认隐藏) -->
+    <div id="modal-overlay" onclick="closeModal(event)">
+        <div id="modal-content" class="glass-card p-8 md:p-10 rounded-2xl shadow-[0_10px_40px_rgba(122,28,121,0.25)]">
+            <span class="close-btn" onclick="closeModal(event)">&times;</span>
+            <h3 id="modal-title" class="text-2xl font-title mb-4 text-gradient">模块标题</h3>
+            <div id="modal-body" class="text-gray-300 leading-relaxed text-sm md:text-base">
+                模块内容加载中...
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript 逻辑 -->
+    <script>
+        // --- 1. 恋爱倒计时逻辑 ---
+        // TODO: 在这里修改你们在一起的起始时间！(年, 月-1, 日, 时, 分, 秒)
+        // 注意：JavaScript中的月份是从0开始的，所以如果是一月，写0；如果是十月，写9。
+        const startDate = new Date(2026, 4, 14, 01, 26, 0).getTime(); // 示例：2023年5月20日
+
+        function updateCountdown() {
+            const now = new Date().getTime();
+            const distance = now - startDate;
+
+            if (distance < 0) return; // 如果在未来，不计算
+
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+            document.getElementById("days").innerText = days.toString().padStart(2, '0');
+            document.getElementById("hours").innerText = hours.toString().padStart(2, '0');
+            document.getElementById("minutes").innerText = minutes.toString().padStart(2, '0');
+            document.getElementById("seconds").innerText = seconds.toString().padStart(2, '0');
+        }
+
+        // 每秒更新一次
+        setInterval(updateCountdown, 1000);
+        updateCountdown(); // 初始化调用
+
+        // --- 2. 动态星空背景画布逻辑 ---
+        const canvas = document.getElementById('starfield');
+        const ctx = canvas.getContext('2d');
+        
+        let width, height;
+        let stars = [];
+
+        function resizeCanvas() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+            initStars();
+        }
+
+        function initStars() {
+            stars = [];
+            // 根据屏幕大小决定星星数量
+            const numStars = Math.floor((width * height) / 2000);
+            for (let i = 0; i < numStars; i++) {
+                stars.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    radius: Math.random() * 1.5,
+                    alpha: Math.random(),
+                    speed: Math.random() * 0.02 + 0.005,
+                    // 偶尔生成带有专属紫色的星星
+                    color: Math.random() > 0.9 ? '#7A1C79' : '#ffffff' 
+                });
+            }
+        }
+
+        function animateStars() {
+            ctx.clearRect(0, 0, width, height);
+            
+            stars.forEach(star => {
+                // 闪烁效果
+                star.alpha += star.speed;
+                if (star.alpha > 1 || star.alpha < 0) {
+                    star.speed = -star.speed;
+                }
+                
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(${hexToRgb(star.color)}, ${Math.abs(star.alpha)})`;
+                ctx.fill();
+            });
+            
+            requestAnimationFrame(animateStars);
+        }
+
+        // 辅助函数：十六进制转RGB用于Canvas透明度控制
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? 
+                `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` 
+                : '255, 255, 255';
+        }
+
+        // 初始化并启动动画
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        animateStars();
+	// --- 3. 动态修正行星视角 (保持正对屏幕) ---
+        const systemXAngle = 75; // 星系整体倾斜的 X 角度，需与 CSS 保持一致
+        const orbits = document.querySelectorAll('.orbit');
+
+        function fixPlanetRotation() {
+            // 遍历获取每个轨道当前的旋转角度
+            orbits.forEach(orbit => {
+                const computedStyle = window.getComputedStyle(orbit);
+                const transform = computedStyle.getPropertyValue('transform');
+                
+                // 默认轨道未旋转
+                let angleZ = 0; 
+                
+                if(transform !== 'none') {
+                    // 从矩阵中解析角度
+                    const values = transform.split('(')[1].split(')')[0].split(',');
+                    const a = values[0];
+                    const b = values[1];
+                    angleZ = Math.round(Math.atan2(b, a) * (180/Math.PI));
+                }
+
+                // 找到该轨道下的行星实体
+                const planetInner = orbit.querySelector('.planet-inner');
+                if (planetInner) {
+                     // 核心逻辑：先反向 Z 轴旋转抵消轨道的转动，再反向 X 轴旋转抵消星系的倾斜
+                    planetInner.style.transform = `rotateZ(${-angleZ}deg) rotateX(${-systemXAngle}deg)`;
+                }
+            });
+            // 持续循环计算
+            requestAnimationFrame(fixPlanetRotation);
+        }
+        
+        // 启动修正动画
+        fixPlanetRotation();
+	// --- 4. 悬浮舱 (Modal) 交互逻辑 ---
+        const modalData = {
+            travel: {
+                title: "足迹 · 旅行回忆",
+                content: `
+                <!-- 登机牌主体 -->
+                <div class="bg-white text-gray-800 rounded-xl overflow-hidden shadow-lg relative mt-2">
+                   <div class="h-2 w-full" style="background-color: var(--accent-purple);"></div>
+                   <div class="p-5 border-b border-gray-300 border-dashed relative">
+                       <div class="flex justify-between items-center mb-5">
+                           <span class="font-title text-sm tracking-widest text-[#7A1C79] font-bold">FLIGHT LOVE-0520</span>
+                           <span class="text-xs font-bold text-gray-400 tracking-wider">FIRST CLASS</span>
+                       </div>
+                       <div class="flex justify-between items-center mb-5">
+                           <div class="text-center">
+                               <div class="text-3xl font-bold font-title">初见</div>
+                               <div class="text-xs text-gray-400 mt-1 uppercase tracking-widest">First Sight</div>
+                           </div>
+                           <div class="text-[#7A1C79] text-xl transform rotate-45">✈️</div>
+                           <div class="text-center">
+                               <div class="text-3xl font-bold font-title">永远</div>
+                               <div class="text-xs text-gray-400 mt-1 uppercase tracking-widest">Forever</div>
+                           </div>
+                       </div>
+                       <div class="flex justify-between text-sm mt-6">
+                           <div>
+                               <span class="text-gray-400 text-xs block mb-1">PASSENGER</span>
+                               <span class="font-bold tracking-wide">My Universe</span>
+                           </div>
+                           <div class="text-right">
+                               <span class="text-gray-400 text-xs block mb-1">SEAT</span>
+                               <span class="font-bold tracking-wide">头等偏爱</span>
+                           </div>
+                       </div>
+                   </div>
+                   <!-- 条形码 (纯CSS生成) -->
+                   <div class="p-4 bg-gray-50 flex justify-center items-center">
+                       <div class="h-10 w-full opacity-70" style="background: repeating-linear-gradient(to right, #333, #333 3px, transparent 3px, transparent 5px, #333 5px, #333 6px, transparent 6px, transparent 10px, #333 10px, #333 14px, transparent 14px, transparent 16px);"></div>
+                   </div>
+                </div>
+
+                <!-- 底部可滑动相爱轨迹 -->
+                <div class="mt-6">
+                   <h4 class="text-gray-400 font-title text-sm mb-3 tracking-widest text-center">时光轨迹 TIME LINE</h4>
+                   <!-- 隐藏滚动条但保留左右滑动功能 -->
+                   <div class="flex gap-4 overflow-x-auto pb-4 snap-x" style="scrollbar-width: none;">
+                       
+                       <!-- 拍立得 1 -->
+                       <div class="min-w-[120px] bg-white rounded p-2 snap-center shadow-md transform rotate-[-2deg] transition hover:scale-105 hover:rotate-0">
+                           <img src="images/1.png" class="w-full h-20 object-cover rounded-sm" alt="大理">
+                           <p class="text-center text-xs mt-2 text-gray-800 font-title font-bold">大理的微风</p>
+                       </div>
+                       
+                       <!-- 拍立得 2 -->
+                       <div class="min-w-[120px] bg-white rounded p-2 snap-center shadow-md transform rotate-[3deg] transition hover:scale-105 hover:rotate-0">
+                           <img src="images/2.jpg" class="w-full h-20 object-cover rounded-sm" alt="斯坦福">
+                           <p class="text-center text-xs mt-2 text-gray-800 font-title font-bold">斯坦福漫步</p>
+                       </div>
+                       
+                       <!-- 拍立得 3 -->
+                       <div class="min-w-[120px] bg-white rounded p-2 snap-center shadow-md transform rotate-[-1deg] transition hover:scale-105 hover:rotate-0">
+                           <img src="images/3.jpg" class="w-full h-20 object-cover rounded-sm" alt="华盛顿">
+                           <p class="text-center text-xs mt-2 text-gray-800 font-title font-bold">华盛顿的雨</p>
+                       </div>
+
+                       <!-- 拍立得 4 -->
+                       <div class="min-w-[120px] bg-white rounded p-2 snap-center shadow-md transform rotate-[2deg] transition hover:scale-105 hover:rotate-0">
+                           <img src="images/4.jpg" class="w-full h-20 object-cover rounded-sm" alt="未来">
+                           <p class="text-center text-xs mt-2 text-gray-800 font-title font-bold">未完待续...</p>
+                       </div>
+
+                   </div>
+                </div>
+                `
+            },
+            food: {
+                title: "寻味 · 美食地图",
+                content: "不知道今天吃什么？<br><br> <button class='btn-glow text-white px-6 py-2 rounded-full text-sm mt-2'>随机抽取今日晚餐</button>"
+            },
+            future: {
+                title: "未来 · 愿望清单",
+                content: "<ul class='text-left space-y-2 ml-4 list-disc marker:text-[#7A1C79]'><li>一起去冰岛看极光</li><li>养一只可爱的小狗</li><li>拥有一个带落地窗的家</li></ul><br><span class='text-[#7A1C79] font-title text-sm'>∞ 未完待续 ∞</span>"
+            }
+        };
+
+        function openModal(planetId) {
+            const overlay = document.getElementById('modal-overlay');
+            document.getElementById('modal-title').innerHTML = modalData[planetId].title;
+            document.getElementById('modal-body').innerHTML = modalData[planetId].content;
+            overlay.classList.add('active');
+        }
+
+        function closeModal(event) {
+            // 确保点击模态框外部或关闭按钮时才关闭
+            if (event.target.id === 'modal-overlay' || event.target.classList.contains('close-btn')) {
+                document.getElementById('modal-overlay').classList.remove('active');
+            }
+        }
+    </script>
+</body>
+</html>
